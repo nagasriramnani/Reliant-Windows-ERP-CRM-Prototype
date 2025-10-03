@@ -304,4 +304,3 @@ erp_crm_prototype/
 **Built for clarity, reliability, and demonstration value — ready to extend into production.**
 
 
-**Built for reliability, clarity, and demonstration value — ready to extend into production.**
