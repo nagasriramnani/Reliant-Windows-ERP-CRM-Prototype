@@ -1,0 +1,310 @@
+{% extends "layout.html" %}
+{% set active = 'quotes' %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-10 mx-auto">
+    <div class="card p-4">
+      <h3 class="mb-3">New Quotation</h3>
+      <form id="quoteForm" method="post">
+        <div class="row g-3">
+          <div class="col-md-8">
+            <label class="form-label">Title</label>
+            <input class="form-control" name="title" placeholder="e.g., Alice Smith - Replacement Quote" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Status</label>
+            <select class="form-select" name="status">
+              <option>Draft</option>
+              <option>Sent</option>
+              <option>Accepted</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Customer</label>
+            <select class="form-select" name="customer_id" required>
+              {% for c in customers %}
+              <option value="{{ c.id }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <hr class="my-4">
+        <h5>Items</h5>
+        <div id="itemsContainer"></div>
+        <button type="button" class="btn btn-outline-secondary mt-2" onclick="addItem()">+ Add Item</button>
+
+        <hr class="my-4">
+        <div class="row">
+          <div class="col-md-8">
+            <div class="d-flex align-items-center gap-3">
+              <button type="button" class="btn btn-info" onclick="getAiSuggestion()" id="aiButton">
+                <i class="fas fa-robot me-1"></i>Get AI Price Suggestion
+              </button>
+              <div id="aiTotal" class="fw-bold text-primary"></div>
+            </div>
+          </div>
+          <div class="col-md-4 text-end">
+            <div class="h5 mb-0">
+              <span class="text-muted">Total: </span>
+              <span id="grandTotal" class="text-success">$0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center justify-content-between mt-4">
+          <div class="text-muted small">
+            <i class="fas fa-info-circle me-1"></i>
+            Fill in all required fields and add at least one item to create the quotation.
+          </div>
+          <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ url_for('quotations') }}">
+              <i class="fas fa-times me-1"></i>Cancel
+            </a>
+            <button class="btn btn-primary" type="submit" id="submitButton">
+              <i class="fas fa-save me-1"></i>Create Quotation
+            </button>
+          </div>
+        </div>
+
+        <!-- hidden inputs for sequential items indexing -->
+        <div id="hiddenInputs"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+let idx = 0;
+// NOTE: products_js is passed from app.py as a list of plain dicts
+const products = {{ products_js|tojson|safe }};
+
+function addItem() {
+  const c = document.getElementById('itemsContainer');
+  const productOptions = products.map(p => `<option value="${p.id}" data-category="${p.category}" data-base="${p.base_cost_per_sqft}">${p.name} (${p.category})</option>`).join('');
+  const html = `
+    <div class="card p-3 my-2" id="item-${idx}">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label">Product</label>
+          <select class="form-select product-select" name="items[${idx}][product_id]" required onchange="updateUnitPrice(${idx})">
+            <option value="">Select a product</option>
+            ${productOptions}
+          </select>
+        </div>
+        <div class="col-md-1">
+          <label class="form-label">Qty</label>
+          <input type="number" min="1" value="1" class="form-control" name="items[${idx}][quantity]" required onchange="calculateLineTotal(${idx})">
+        </div>
+        <div class="col-md-1">
+          <label class="form-label">Width (ft)</label>
+          <input type="number" step="0.01" min="0" class="form-control" name="items[${idx}][width_ft]" required onchange="calculateLineTotal(${idx})">
+        </div>
+        <div class="col-md-1">
+          <label class="form-label">Height (ft)</label>
+          <input type="number" step="0.01" min="0" class="form-control" name="items[${idx}][height_ft]" required onchange="calculateLineTotal(${idx})">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Unit Price ($/sqft)</label>
+          <input type="number" step="0.01" min="0" class="form-control unit-price" name="items[${idx}][unit_price]" placeholder="e.g., 80.00" required onchange="calculateLineTotal(${idx})">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Line Total</label>
+          <input type="text" class="form-control line-total" readonly value="$0.00">
+        </div>
+        <div class="col-md-1">
+          <label class="form-label">&nbsp;</label>
+          <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeItem(${idx})" title="Remove item">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>`;
+  c.insertAdjacentHTML('beforeend', html);
+  idx += 1;
+  updateGrandTotal();
+}
+
+function removeItem(itemIdx) {
+  const item = document.getElementById(`item-${itemIdx}`);
+  if (item) {
+    item.remove();
+    updateGrandTotal();
+  }
+}
+
+function updateUnitPrice(itemIdx) {
+  const select = document.querySelector(`#item-${itemIdx} .product-select`);
+  const unitPriceInput = document.querySelector(`#item-${itemIdx} .unit-price`);
+  
+  if (select.value) {
+    const selectedOption = select.options[select.selectedIndex];
+    const basePrice = parseFloat(selectedOption.getAttribute('data-base')) || 0;
+    unitPriceInput.value = basePrice.toFixed(2);
+    calculateLineTotal(itemIdx);
+  }
+}
+
+function calculateLineTotal(itemIdx) {
+  const qty = parseFloat(document.querySelector(`input[name="items[${itemIdx}][quantity]"]`).value) || 0;
+  const width = parseFloat(document.querySelector(`input[name="items[${itemIdx}][width_ft]"]`).value) || 0;
+  const height = parseFloat(document.querySelector(`input[name="items[${itemIdx}][height_ft]"]`).value) || 0;
+  const unitPrice = parseFloat(document.querySelector(`input[name="items[${itemIdx}][unit_price]"]`).value) || 0;
+  
+  const area = Math.max(width * height, 1.0);
+  const lineTotal = qty * area * unitPrice;
+  
+  const lineTotalInput = document.querySelector(`#item-${itemIdx} .line-total`);
+  lineTotalInput.value = `$${lineTotal.toFixed(2)}`;
+  
+  updateGrandTotal();
+}
+
+function updateGrandTotal() {
+  const lineTotals = document.querySelectorAll('.line-total');
+  let grandTotal = 0;
+  
+  lineTotals.forEach(input => {
+    const value = input.value.replace('$', '').replace(',', '');
+    grandTotal += parseFloat(value) || 0;
+  });
+  
+  const grandTotalElement = document.getElementById('grandTotal');
+  if (grandTotalElement) {
+    grandTotalElement.textContent = `$${grandTotal.toFixed(2)}`;
+  }
+}
+
+function getAiSuggestion() {
+  const aiButton = document.getElementById('aiButton');
+  const aiTotal = document.getElementById('aiTotal');
+  
+  // Check if there are any items
+  const selects = document.querySelectorAll('select[name^="items["][name$="[product_id]"]');
+  const validItems = [];
+  
+  selects.forEach(sel => {
+    if (sel.value) {
+      const name = sel.name;
+      const base = name.substring(0, name.indexOf('[product_id]'));
+      const qty = document.querySelector(`input[name="${base}[quantity]"]`)?.value || 1;
+      const width = document.querySelector(`input[name="${base}[width_ft]"]`)?.value || 0;
+      const height = document.querySelector(`input[name="${base}[height_ft]"]`)?.value || 0;
+      
+      if (qty > 0 && width > 0 && height > 0) {
+        validItems.push({
+          product_id: parseInt(sel.value),
+          quantity: parseInt(qty),
+          width_ft: parseFloat(width),
+          height_ft: parseFloat(height),
+        });
+      }
+    }
+  });
+
+  if (validItems.length === 0) {
+    aiTotal.innerHTML = '<span class="text-warning">Please add items with valid dimensions first</span>';
+    return;
+  }
+
+  // Show loading state
+  aiButton.disabled = true;
+  aiButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Getting AI Suggestion...';
+  aiTotal.innerHTML = '';
+
+  const payload = { items: validItems };
+
+  fetch('{{ url_for("api_predict_price") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      aiTotal.innerHTML = `<span class="text-success">AI Suggested: $${d.suggested_total.toFixed(2)}</span>`;
+      
+      // Optionally auto-fill unit prices based on AI suggestion
+      const suggestedUnitPrice = d.suggested_total / validItems.reduce((sum, item) => {
+        const area = Math.max(item.width_ft * item.height_ft, 1.0);
+        return sum + (item.quantity * area);
+      }, 0);
+      
+      if (confirm(`Apply AI suggested unit price of $${suggestedUnitPrice.toFixed(2)} per sqft to all items?`)) {
+        selects.forEach(sel => {
+          if (sel.value) {
+            const name = sel.name;
+            const base = name.substring(0, name.indexOf('[product_id]'));
+            const unitPriceInput = document.querySelector(`input[name="${base}[unit_price]"]`);
+            if (unitPriceInput) {
+              unitPriceInput.value = suggestedUnitPrice.toFixed(2);
+              const idxStr = base.split('[')[1].split(']')[0];
+              calculateLineTotal(parseInt(idxStr));
+            }
+          }
+        });
+      }
+    } else {
+      aiTotal.innerHTML = '<span class="text-danger">AI suggestion failed. Please try again.</span>';
+    }
+  })
+  .catch(() => {
+    aiTotal.innerHTML = '<span class="text-danger">AI suggestion failed. Please check your connection.</span>';
+  })
+  .finally(() => {
+    aiButton.disabled = false;
+    aiButton.innerHTML = '<i class="fas fa-robot me-1"></i>Get AI Price Suggestion';
+  });
+}
+
+// Form validation and submission
+document.getElementById('quoteForm').addEventListener('submit', function(e) {
+  const title = document.querySelector('input[name="title"]').value.trim();
+  const customerId = document.querySelector('select[name="customer_id"]').value;
+  const items = document.querySelectorAll('select[name^="items["][name$="[product_id]"]');
+  
+  // Basic validation
+  if (!title) {
+    e.preventDefault();
+    alert('Please enter a quotation title.');
+    return;
+  }
+  
+  if (!customerId) {
+    e.preventDefault();
+    alert('Please select a customer.');
+    return;
+  }
+  
+  let hasValidItems = false;
+  items.forEach(sel => {
+    if (sel.value) {
+      const name = sel.name;
+      const base = name.substring(0, name.indexOf('[product_id]'));
+      const qty = document.querySelector(`input[name="${base}[quantity]"]`).value;
+      const width = document.querySelector(`input[name="${base}[width_ft]"]`).value;
+      const height = document.querySelector(`input[name="${base}[height_ft]"]`).value;
+      const unitPrice = document.querySelector(`input[name="${base}[unit_price]"]`).value;
+      
+      if (qty > 0 && width > 0 && height > 0 && unitPrice > 0) {
+        hasValidItems = true;
+      }
+    }
+  });
+  
+  if (!hasValidItems) {
+    e.preventDefault();
+    alert('Please add at least one valid item with quantity, dimensions, and unit price.');
+    return;
+  }
+  
+  // Show loading state
+  const submitButton = document.getElementById('submitButton');
+  submitButton.disabled = true;
+  submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creating...';
+});
+
+// Add an initial item row
+addItem();
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% set active = 'quotes' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">{{ title or 'Quotations' }}</h3>
+  <a href="{{ url_for('quotation_new') }}" class="btn btn-primary">New Quotation</a>
+</div>
+
+<div class="card p-3">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Customer</th>
+          <th>Owner</th>
+          <th>Status</th>
+          <th>Total</th>
+          <th>Created</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for q in quotations %}
+        <tr>
+          <td>{{ q.title }}</td>
+          <td>{{ q.customer.name }}</td>
+          <td>{{ q.user.username }}</td>
+          <td>
+            <span class="badge bg-{% if q.status=='Accepted' %}success{% elif q.status=='Sent' %}info{% else %}secondary{% endif %} badge-status">{{ q.status }}</span>
+          </td>
+          <td>${{ '%.2f'|format(q.total_amount) }}</td>
+          <td>{{ q.timestamp.strftime('%Y-%m-%d') }}</td>
+          <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('quotation_detail', id=q.id) }}">View</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

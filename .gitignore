@@ -1,0 +1,35 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environment
+venv/
+.env/
+
+# OS / IDE files
+.DS_Store
+*.swp
+*.swo
+*.idea/
+.vscode/
+
+# SQLite DB and trained models
+instance/database.db
+*.db
+*.pkl
+
+# Hugging Face / Transformers cache
+.hfhome/
+transformers_cache/
+cache/
+models/
+
+# Logs & temp
+*.log
+*.tmp
+
+# Node/npm (if any future frontend integration)
+node_modules/

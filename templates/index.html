@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-10 mx-auto">
+    <div class="card p-4">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h3 class="mb-0">Recent Quotations</h3>
+        <div class="d-flex gap-2">
+          <a class="btn btn-outline-primary" href="{{ url_for('customers') }}">Customers</a>
+          <a class="btn btn-primary" href="{{ url_for('quotations') }}">All Quotations</a>
+        </div>
+      </div>
+      <p class="text-muted mb-3">Generate or refresh AI summaries directly from here.</p>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Customer</th>
+              <th>Status</th>
+              <th>Total</th>
+              <th style="width: 34%">AI Summary</th>
+              <th style="width: 150px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for q in quotations %}
+            <tr id="qrow-{{ q.id }}">
+              <td>
+                <a href="{{ url_for('quotation_detail', id=q.id) }}">{{ q.title }}</a><br>
+                <small class="text-muted">{{ q.timestamp.strftime('%Y-%m-%d') }}</small>
+              </td>
+              <td>{{ q.customer.name }}</td>
+              <td>
+                <span class="badge bg-{% if q.status=='Accepted' %}success{% elif q.status=='Sent' %}info{% else %}secondary{% endif %}">
+                  {{ q.status }}
+                </span>
+              </td>
+              <td>${{ '%.2f'|format(q.total_amount) }}</td>
+              <td>
+                <div id="sum-{{ q.id }}" class="small">
+                  {% if q.ai_summary %}
+                    {{ q.ai_summary }}
+                  {% else %}
+                    <span class="text-muted">No summary yet.</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td>
+                <button class="btn btn-sm btn-outline-primary w-100" id="btn-{{ q.id }}" onclick="generateSummary({{ q.id }})">
+                  <i class="fas fa-wand-magic-sparkles me-1"></i> Generate
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+            {% if quotations|length == 0 %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-4">
+                No quotations yet. <a href="{{ url_for('quotation_new') }}">Create your first quotation</a>.
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-2 text-muted small">
+        Tip: Click “Generate” to create or refresh the AI summary for a quotation. You can still open a quote to see full details.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function generateSummary(qid) {
+  const btn = document.getElementById('btn-' + qid);
+  const out = document.getElementById('sum-' + qid);
+
+  if (!btn || !out) return;
+
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Working...';
+
+  fetch('{{ url_for("api_generate_summary") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ quotation_id: qid })
+  })
+  .then(res => res.json())
+  .then(d => {
+    if (d.ok) {
+      out.textContent = d.summary || '(No text returned)';
+    } else {
+      out.innerHTML = '<span class="text-danger">Failed: ' + (d.error || 'Unknown error') + '</span>';
+    }
+  })
+  .catch(() => {
+    out.innerHTML = '<span class="text-danger">Request failed. Please try again.</span>';
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,24 @@
+/* static/css/custom.css */
+body {
+  background: #f7f9fc;
+}
+.navbar-brand {
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.card {
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+  border-radius: 14px;
+}
+.table-hover tbody tr:hover {
+  background: #f1f6ff;
+}
+.badge-status {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+}
+.footer-note {
+  color: #7a8899;
+  font-size: 0.9rem;
+}

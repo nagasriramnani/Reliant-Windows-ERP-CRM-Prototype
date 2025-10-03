@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+{% set active = 'customers' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Customers</h3>
+  {% if session.get('role') == 'manager' %}
+    <a href="{{ url_for('customer_new') }}" class="btn btn-primary">New Customer</a>
+  {% endif %}
+</div>
+
+<div class="card p-3">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Company</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for c in customers %}
+        <tr>
+          <td>{{ c.name }}</td>
+          <td>{{ c.email or '-' }}</td>
+          <td>{{ c.phone or '-' }}</td>
+          <td>{{ c.company_name or '-' }}</td>
+          <td>{{ c.date_created.strftime('%Y-%m-%d') }}</td>
+          <td>
+            {% if session.get('role') == 'manager' %}
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('customer_edit', id=c.id) }}">Edit</a>
+            {% endif %}
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('customer_quotations', customer_id=c.id) }}">Quotations</a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
