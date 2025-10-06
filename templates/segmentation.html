@@ -1,0 +1,61 @@
+{% extends "layout.html" %}
+{% set active = 'segments' %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-10 mx-auto">
+    <div class="card p-4">
+      <h3 class="mb-3">Customer Segmentation</h3>
+      <p class="text-muted">
+        Customers are grouped by total spend, purchase frequency, and recency (days since last quotation).
+      </p>
+
+      {% if rows and rows|length > 0 %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Customer</th>
+              <th>Segment</th>
+              <th class="text-end">Total Quotes</th>
+              <th class="text-end">Total Value ($)</th>
+              <th class="text-end">Avg Value ($)</th>
+              <th class="text-end">Days Since Last</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>
+                <a href="{{ url_for('customer_quotations', customer_id=r.customer_id) }}">
+                  {{ r.customer_name }}
+                </a>
+              </td>
+              <td>
+                {% set seg = r.segment %}
+                <span class="badge
+                  {% if 'High-Value' in seg %} text-bg-success
+                  {% elif 'Occasional' in seg %} text-bg-warning
+                  {% else %} text-bg-secondary {% endif %}">
+                  {{ seg }}
+                </span>
+              </td>
+              <td class="text-end">{{ r.total_quotes }}</td>
+              <td class="text-end">{{ '%.2f'|format(r.total_value) }}</td>
+              <td class="text-end">{{ '%.2f'|format(r.avg_value) }}</td>
+              <td class="text-end">{{ r.days_since_last }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <div class="alert alert-info mb-0">
+          No customers found to segment. Seed the database first.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
