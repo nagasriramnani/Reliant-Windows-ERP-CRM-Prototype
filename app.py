@@ -8,6 +8,7 @@ from models import db, User, Customer, Product, Quotation, QuotationItem
 from werkzeug.security import check_password_hash
 from price_predictor import predict_quote_total
 from summary_generator import generate_quote_summary
+from customer_segmentation import compute_customer_segments  # ADDED AFTER THE SUBMISSION ---------
 
 def create_app():
     app = Flask(__name__, instance_relative_config=True, static_folder="static", template_folder="templates")
@@ -74,14 +75,15 @@ def create_app():
             quotes = Quotation.query.order_by(Quotation.timestamp.desc()).limit(10).all()
         else:
             quotes = Quotation.query.filter_by(user_id=session.get('user_id')).order_by(Quotation.timestamp.desc()).limit(10).all()
-        return render_template("index.html", quotations=quotes)
+        # Pass 'active' for navbar highlighting (dashboard)
+        return render_template("index.html", quotations=quotes, active="dashboard")
 
     # ---------------- CRM: Customers ----------------
     @app.route("/customers")
     @login_required
     def customers():
         customers = Customer.query.order_by(Customer.date_created.desc()).all()
-        return render_template("customer_list.html", customers=customers)
+        return render_template("customer_list.html", customers=customers, active="customers")
 
     @app.route("/customer/new", methods=["GET","POST"])
     @login_required
@@ -101,7 +103,7 @@ def create_app():
                 db.session.commit()
                 flash("Customer created.", "success")
                 return redirect(url_for("customers"))
-        return render_template("customer_form.html", customer=None)
+        return render_template("customer_form.html", customer=None, active="customers")
 
     @app.route("/customer/<int:id>/edit", methods=["GET","POST"])
     @login_required
@@ -117,7 +119,7 @@ def create_app():
             db.session.commit()
             flash("Customer updated.", "success")
             return redirect(url_for("customers"))
-        return render_template("customer_form.html", customer=customer)
+        return render_template("customer_form.html", customer=customer, active="customers")
 
     @app.route("/customer/<int:customer_id>/quotations")
     @login_required
@@ -127,7 +129,7 @@ def create_app():
             quotes = Quotation.query.filter_by(customer_id=customer_id).order_by(Quotation.timestamp.desc()).all()
         else:
             quotes = Quotation.query.filter_by(customer_id=customer_id, user_id=session.get('user_id')).order_by(Quotation.timestamp.desc()).all()
-        return render_template("quotation_list.html", quotations=quotes, title=f"Quotations for {cust.name}")
+        return render_template("quotation_list.html", quotations=quotes, title=f"Quotations for {cust.name}", active="quotes")
 
     # ---------------- ERP: Quotations ----------------
     @app.route("/quotations")
@@ -139,7 +141,7 @@ def create_app():
         else:
             quotes = Quotation.query.filter_by(user_id=session.get('user_id')).order_by(Quotation.timestamp.desc()).all()
             title = "My Quotations"
-        return render_template("quotation_list.html", quotations=quotes, title=title)
+        return render_template("quotation_list.html", quotations=quotes, title=title, active="quotes")
 
     @app.route("/quotation/new", methods=["GET","POST"])
     @login_required
@@ -236,7 +238,7 @@ def create_app():
             }
             for p in products
         ]
-        return render_template("quotation_form.html", customers=customers, products_js=products_js)
+        return render_template("quotation_form.html", customers=customers, products_js=products_js, active="quotes")
 
     @app.route("/quotation/<int:id>")
     @login_required
@@ -246,7 +248,7 @@ def create_app():
         if session.get('role') != 'manager' and q.user_id != session.get('user_id'):
             flash("You don't have permission to view that quotation.", "warning")
             return redirect(url_for("quotations"))
-        return render_template("quotation_detail.html", q=q)
+        return render_template("quotation_detail.html", q=q, active="quotes")
 
     # ---------------- AI price suggestion API ----------------
     @app.route("/api/predict_price", methods=["POST"])
@@ -310,6 +312,18 @@ def create_app():
             return jsonify({"ok": True, "summary": summary})
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)}), 500
+
+    # ---------------- AI: Customer Segmentation (Manager-only) ----------------
+    @app.route("/segments")
+    @login_required
+    @role_required('manager')
+    def segments():
+        """
+        Compute simple customer segments and render a table.
+        """
+        df = compute_customer_segments(db.session)
+        rows = df.to_dict(orient="records") if not df.empty else []
+        return render_template("segmentation.html", rows=rows, active="segments")
 
     return app
 

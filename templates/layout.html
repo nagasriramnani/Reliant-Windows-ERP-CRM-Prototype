@@ -13,15 +13,40 @@
   <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top">
       <div class="container">
-        <a class="navbar-brand" href="{{ url_for('index') }}">Reliant Windows</a>
+        <a class="navbar-brand fw-semibold" href="{{ url_for('index') }}">
+          <i class="fa-solid fa-window-restore me-2"></i>Reliant Windows
+        </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample" aria-controls="navbarsExample" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
+
         <div class="collapse navbar-collapse" id="navbarsExample">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item"><a class="nav-link {% if active=='customers' %}active{% endif %}" href="{{ url_for('customers') }}">Customers</a></li>
-            <li class="nav-item"><a class="nav-link {% if active=='quotes' %}active{% endif %}" href="{{ url_for('quotations') }}">Quotations</a></li>
+            <li class="nav-item">
+              <a class="nav-link {% if active=='dashboard' %}active{% endif %}" href="{{ url_for('index') }}">
+                <i class="fa-solid fa-gauge-high me-1"></i>Dashboard
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if active=='customers' %}active{% endif %}" href="{{ url_for('customers') }}">
+                <i class="fa-solid fa-users me-1"></i>Customers
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if active=='quotes' %}active{% endif %}" href="{{ url_for('quotations') }}">
+                <i class="fa-solid fa-file-invoice-dollar me-1"></i>Quotations
+              </a>
+            </li>
+
+            {% if session.get('role') == 'manager' %}
+            <li class="nav-item">
+              <a class="nav-link {% if active=='segments' %}active{% endif %}" href="{{ url_for('segments') }}">
+                <i class="fa-solid fa-chart-simple me-1"></i>Segmentation
+              </a>
+            </li>
+            {% endif %}
           </ul>
+
           <div class="d-flex align-items-center">
             <span class="me-3 text-muted">
               Hello, {{ session.get('username') }}
@@ -30,7 +55,9 @@
               {% endif %}
             </span>
             <form method="post" action="{{ url_for('logout') }}">
-              <button class="btn btn-outline-secondary btn-sm" type="submit">Logout</button>
+              <button class="btn btn-outline-secondary btn-sm" type="submit">
+                <i class="fa-solid fa-right-from-bracket me-1"></i>Logout
+              </button>
             </form>
           </div>
         </div>
