@@ -166,6 +166,7 @@ python preload_models.py
 |--------|---------|
 | Login Page | ![Login](outputs/login.png) |
 | Manager – Customers | ![Manager Customers](outputs/Customers_manager.png) |
+| Customer_segementation_Updated After submission | ![Manager Customers](outputs/Customer_Segmentation_UPDATED_LAYOUT.png) |
 | Create/Edit Customer | ![Customer Form](outputs/customer_form.png) |
 | Create Quotation (Form) | ![Quotation Form](outputs/Quotations_Form.png) |
 | Quotations List | ![Quotations Page](outputs/Quotations_Page.png) |
@@ -304,3 +305,4 @@ erp_crm_prototype/
 **Built for clarity, reliability, and demonstration value — ready to extend into production.**
 
 
+**Built for reliability, clarity, and demonstration value — ready to extend into production.**
